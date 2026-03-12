@@ -4,6 +4,8 @@ on:
   pull_request_target:
     types:
       - opened
+      - reopened
+      - closed
     paths:
       - "**/models/*.py"
       - "**/models/**/*.py"
@@ -14,12 +16,15 @@ jobs:
     steps:
       - name: Send Slack notification
         env:
+          PR_ACTION: ${{ github.event.action }}
+          PR_MERGED: ${{ github.event.pull_request.merged }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          DESTINATION_BRANCH: ${{ github.event.pull_request.base.ref }}
           REPO_NAME: ${{ github.repository }}
         run: |
           if [ -z "$SLACK_BOT_TOKEN" ] || [ -z "$SLACK_CHANNEL_ID" ]; then
@@ -44,16 +49,37 @@ jobs:
             soaldev14) slack_mention="@Edmond" ;;
           esac
 
-          if [ -n "$slack_mention" ]; then
-            message="New PR with potential schema changes opened in $REPO_NAME: #$PR_NUMBER $PR_TITLE by @$PR_AUTHOR - $PR_URL. $slack_mention please review and notify the team with the required changes if any!"
-          else
-            message="New PR with potential schema changes opened in $REPO_NAME: #$PR_NUMBER $PR_TITLE by @$PR_AUTHOR - $PR_URL."
-          fi
+          if [ "$PR_ACTION" = "closed" ] && [ "$PR_MERGED" = "true" ]; then
+            thread_ts=$(curl -sS -G "https://slack.com/api/conversations.history" \
+              -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+              --data-urlencode "channel=$SLACK_CHANNEL_ID" \
+              --data-urlencode "limit=200" \
+              | jq -r --arg pr_url "$PR_URL" '.messages[] | select(.text | contains($pr_url)) | .ts' \
+              | head -n 1)
 
-          payload=$(jq -n \
-            --arg channel "$SLACK_CHANNEL_ID" \
-            --arg text "$message" \
-            '{channel: $channel, text: $text, link_names: true}')
+            if [ -z "$thread_ts" ]; then
+              echo "Could not find previous Slack message for PR $PR_NUMBER."
+              exit 1
+            fi
+
+            message="This branch has been merged to \"$DESTINATION_BRANCH\"."
+            payload=$(jq -n \
+              --arg channel "$SLACK_CHANNEL_ID" \
+              --arg text "$message" \
+              --arg thread_ts "$thread_ts" \
+              '{channel: $channel, text: $text, thread_ts: $thread_ts}')
+          else
+            if [ -n "$slack_mention" ]; then
+              message="New PR with potential schema changes opened in $REPO_NAME: #$PR_NUMBER $PR_TITLE by @$PR_AUTHOR - $PR_URL. $slack_mention please review and notify the team with the required changes if any!"
+            else
+              message="New PR with potential schema changes opened in $REPO_NAME: #$PR_NUMBER $PR_TITLE by @$PR_AUTHOR - $PR_URL."
+            fi
+
+            payload=$(jq -n \
+              --arg channel "$SLACK_CHANNEL_ID" \
+              --arg text "$message" \
+              '{channel: $channel, text: $text, link_names: true}')
+          fi
 
           curl -sS -X POST "https://slack.com/api/chat.postMessage" \
             -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
