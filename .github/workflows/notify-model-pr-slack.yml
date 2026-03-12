@@ -34,54 +34,38 @@ jobs:
 
           slack_mention=""
           case "$PR_AUTHOR" in
-            soaldev1) slack_mention="@Youmna Nasser" ;;
-            soaldev2) slack_mention="@Mohamad Balouza" ;;
-            soaldev3) slack_mention="@Ahmad Sabbah" ;;
-            soaldev5) slack_mention="@Jad Raad" ;;
-            soaldev6) slack_mention="@Chris" ;;
-            soaldev7) slack_mention="@Joseph Tannoury" ;;
-            j-tannoury) slack_mention="@Joseph Tannoury" ;;
-            soaldev8) slack_mention="@Abdallah Al khaled" ;;
-            soaldev10) slack_mention="@Chafic Najjar" ;;
-            soaldev11) slack_mention="@msh" ;;
-            soaldev12) slack_mention="@Samer Al Turky" ;;
-            soaldev13) slack_mention="@Adam Abou Zeid" ;;
-            soaldev14) slack_mention="@Edmond" ;;
+            soaldev1) slack_mention="@U082SGYU6JC" ;;
+            soaldev2) slack_mention="@U05B4HVMBJM" ;;
+            soaldev3) slack_mention="@U06TRPRU6CF" ;;
+            soaldev5) slack_mention="@U080P6GECS2" ;;
+            soaldev6) slack_mention="@U07UCVB0K6F" ;;
+            soaldev7) slack_mention="@U07FA5SSCHK" ;;
+            j-tannoury) slack_mention="@U07FA5SSCHK" ;;
+            soaldev8) slack_mention="@U07TSEM6L83" ;;
+            soaldev10) slack_mention="@U082GDTLBU1" ;;
+            soaldev12) slack_mention="@U09HJE99E20" ;;
+            soaldev14) slack_mention="@U09CHRHPUAW" ;;
           esac
 
           if [ "$PR_ACTION" = "closed" ] && [ "$PR_MERGED" = "true" ]; then
-            message="This branch has been merged to \"$DESTINATION_BRANCH\"."
-            history_response=$(curl -sS -G "https://slack.com/api/conversations.history" \
+            thread_ts=$(curl -sS -G "https://slack.com/api/conversations.history" \
               -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
               --data-urlencode "channel=$SLACK_CHANNEL_ID" \
-              --data-urlencode "limit=200")
+              --data-urlencode "limit=999" \
+              | jq -r --arg pr_url "$PR_URL" '.messages[] | select(.text | contains($pr_url)) | .ts' \
+              | head -n 1)
 
-            history_ok=$(printf '%s' "$history_response" | jq -r '.ok // false')
-
-            if [ "$history_ok" = "true" ]; then
-              thread_ts=$(printf '%s' "$history_response" | jq -r --arg pr_url "$PR_URL" \
-                '(.messages // [])
-                | map(select((.text // "") | contains($pr_url)))
-                | .[0].ts // empty')
-            else
-              slack_error=$(printf '%s' "$history_response" | jq -r '.error // "unknown_error"')
-              echo "Warning: could not read Slack conversation history: $slack_error"
-              thread_ts=""
+            if [ -z "$thread_ts" ]; then
+              echo "Could not find previous Slack message for PR $PR_NUMBER."
+              exit 1
             fi
 
-            if [ -n "$thread_ts" ]; then
-              payload=$(jq -n \
-                --arg channel "$SLACK_CHANNEL_ID" \
-                --arg text "$message" \
-                --arg thread_ts "$thread_ts" \
-                '{channel: $channel, text: $text, thread_ts: $thread_ts}')
-            else
-              echo "Warning: could not find previous Slack message for PR $PR_NUMBER. Sending a standalone merge notification."
-              payload=$(jq -n \
-                --arg channel "$SLACK_CHANNEL_ID" \
-                --arg text "$message" \
-                '{channel: $channel, text: $text}')
-            fi
+            message="This branch has been merged to \"$DESTINATION_BRANCH\"."
+            payload=$(jq -n \
+              --arg channel "$SLACK_CHANNEL_ID" \
+              --arg text "$message" \
+              --arg thread_ts "$thread_ts" \
+              '{channel: $channel, text: $text, thread_ts: $thread_ts}')
           else
             if [ -n "$slack_mention" ]; then
               message="New PR with potential schema changes opened in $REPO_NAME: #$PR_NUMBER $PR_TITLE by @$PR_AUTHOR - $PR_URL. $slack_mention please review and notify the team with the required changes if any!"
