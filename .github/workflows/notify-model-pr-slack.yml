@@ -34,17 +34,17 @@ jobs:
 
           slack_mention=""
           case "$PR_AUTHOR" in
-            soaldev1) slack_mention="@U082SGYU6JC" ;;
-            soaldev2) slack_mention="@U05B4HVMBJM" ;;
-            soaldev3) slack_mention="@U06TRPRU6CF" ;;
-            soaldev5) slack_mention="@U080P6GECS2" ;;
-            soaldev6) slack_mention="@U07UCVB0K6F" ;;
-            soaldev7) slack_mention="@U07FA5SSCHK" ;;
-            j-tannoury) slack_mention="@U07FA5SSCHK" ;;
-            soaldev8) slack_mention="@U07TSEM6L83" ;;
-            soaldev10) slack_mention="@U082GDTLBU1" ;;
-            soaldev12) slack_mention="@U09HJE99E20" ;;
-            soaldev14) slack_mention="@U09CHRHPUAW" ;;
+            soaldev1) slack_mention="<@U082SGYU6JC>" ;;
+            soaldev2) slack_mention="<@U05B4HVMBJM>" ;;
+            soaldev3) slack_mention="<@U06TRPRU6CF>" ;;
+            soaldev5) slack_mention="<@U080P6GECS2>" ;;
+            soaldev6) slack_mention="<@U07UCVB0K6F>" ;;
+            soaldev7) slack_mention="<@U07FA5SSCHK>" ;;
+            j-tannoury) slack_mention="<@U07FA5SSCHK>" ;;
+            soaldev8) slack_mention="<@U07TSEM6L83>" ;;
+            soaldev10) slack_mention="<@U082GDTLBU1>" ;;
+            soaldev12) slack_mention="<@U09HJE99E20>" ;;
+            soaldev14) slack_mention="<@U09CHRHPUAW>" ;;
           esac
 
           if [ "$PR_ACTION" = "closed" ] && [ "$PR_MERGED" = "true" ]; then
