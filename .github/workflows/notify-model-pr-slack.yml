@@ -35,6 +35,7 @@ jobs:
             soaldev5) slack_mention="@Jad Raad" ;;
             soaldev6) slack_mention="@Chris" ;;
             soaldev7) slack_mention="@Joseph Tannoury" ;;
+            j-tannoury) slack_mention="@Joseph Tannoury" ;;
             soaldev8) slack_mention="@Abdallah Al khaled" ;;
             soaldev10) slack_mention="@Chafic Najjar" ;;
             soaldev11) slack_mention="@msh" ;;
