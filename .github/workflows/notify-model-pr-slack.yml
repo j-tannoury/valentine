@@ -1,0 +1,61 @@
+name: Notify Slack For Model PRs
+
+on:
+  pull_request_target:
+    types:
+      - opened
+    paths:
+      - "**/models/*.py"
+      - "**/models/**/*.py"
+
+jobs:
+  notify-slack:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack notification
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO_NAME: ${{ github.repository }}
+        run: |
+          if [ -z "$SLACK_BOT_TOKEN" ] || [ -z "$SLACK_CHANNEL_ID" ]; then
+            echo "Missing SLACK_BOT_TOKEN or SLACK_CHANNEL_ID secret."
+            exit 1
+          fi
+
+          slack_mention=""
+          case "$PR_AUTHOR" in
+            soaldev1) slack_mention="@Youmna Nasser" ;;
+            soaldev2) slack_mention="@Mohamad Balouza" ;;
+            soaldev3) slack_mention="@Ahmad Sabbah" ;;
+            soaldev5) slack_mention="@Jad Raad" ;;
+            soaldev6) slack_mention="@Chris" ;;
+            soaldev7) slack_mention="@Joseph Tannoury" ;;
+            soaldev8) slack_mention="@Abdallah Al khaled" ;;
+            soaldev10) slack_mention="@Chafic Najjar" ;;
+            soaldev11) slack_mention="@msh" ;;
+            soaldev12) slack_mention="@Samer Al Turky" ;;
+            soaldev13) slack_mention="@Adam Abou Zeid" ;;
+            soaldev14) slack_mention="@Edmond" ;;
+          esac
+
+          if [ -n "$slack_mention" ]; then
+            message="New PR with potential schema changes opened in $REPO_NAME: #$PR_NUMBER $PR_TITLE by @$PR_AUTHOR - $PR_URL. $slack_mention please review and notify the team with the required changes if any!"
+          else
+            message="New PR with potential schema changes opened in $REPO_NAME: #$PR_NUMBER $PR_TITLE by @$PR_AUTHOR - $PR_URL."
+          fi
+
+          payload=$(jq -n \
+            --arg channel "$SLACK_CHANNEL_ID" \
+            --arg text "$message" \
+            '{channel: $channel, text: $text, link_names: true}')
+
+          curl -sS -X POST "https://slack.com/api/chat.postMessage" \
+            -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+            -H "Content-Type: application/json; charset=utf-8" \
+            --data "$payload" \
+            | jq -e '.ok == true'
